@@ -61,7 +61,7 @@ class Lookahead:
         else:
             return self.iter.next()
 
-    def peek(self, n=1):
+    def peek(self, n=0):
         """Return an item n entries ahead in the iteration."""
         while n >= len(self.buffer):
             try:

@@ -29,7 +29,7 @@ def strip_end(text, suffix):
         return text
     return text[:len(text) - len(suffix)]
 
-class Token:
+class Token(object):
     def __init__(self, token_type, associatedValue):
         self.token_type = token_type
         self.associatedValue = associatedValue
@@ -89,7 +89,7 @@ class Parser:
 
     def parse_identifier(self, token):
         val = token.associatedValue
-        if val.isdigit():
+        if False: #val.isdigit():
             return int(val)
         else:
             return val

@@ -1,7 +1,10 @@
 from PlistLineTokenizer import PlistLineTokenizer
 from Utils import Lookahead
 from PlistParser import Token, TOKEN_COMMENT
+from Utils import appendToEndOfString
 import sys
+
+SHARED_WORKSPACE_SIGNATURE = "// Shared workspace tool"
 
 class PlistCombiner:
     def __init__(self, finalPath, targetPath, modifiedPath):
@@ -80,3 +83,12 @@ class PlistCombiner:
 
     def stripCommentTokens(self, tokens):
         return filter(lambda x: type(x) == Token and x.token_type != TOKEN_COMMENT, tokens)
+
+    def annotateLineWithToolSignature(self, line):
+        endsInNewline = False
+
+        if line[-1] == '\n':
+            endsInNewline = True
+            line.rstrip(chars="\n")
+
+        appendToEndOfString()

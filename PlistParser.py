@@ -12,6 +12,8 @@ TOKEN_EQUALS = "TOKEN_EQUALS"
 TOKEN_COMMENT = "TOKEN_COMMENT"
 TOKEN_END = "TOKEN_END"
 TOKEN_IDENTIFIER = "TOKEN_IDENTIFIER"
+TOKEN_BEGIN_SECTION = "TOKEN_BEGIN_SECTION"
+TOKEN_END_SECTION = "TOKEN_END_SECTION"
 
 def char_range(c1, c2):
     """Generates the characters from `c1` to `c2`, inclusive."""
@@ -148,6 +150,7 @@ class Tokenizer:
 
     def tokenize(self, **kwargs):
         self.ignoring_comments = kwargs.get("ignoring_comments", True)
+        self.include_xcode_sections = kwargs.get("include_xcode_sections")
         self.look_ahead = None
 
         next_token = self.next_token()

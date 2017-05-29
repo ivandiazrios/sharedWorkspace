@@ -1,7 +1,7 @@
 from XcodeProject import XcodeProject
 from PlistWriter import PlistWriter
-from PlistParser import Token
 from PlistCombiner import PlistCombiner
+from Utils import appendToEndOfString
 import os
 
 PROJECT1_PATH = "/Users/Ivan/Desktop/Test/Test"

@@ -1,14 +1,22 @@
 import random
 import string
 
-def tabs_to_spaces(string, tab_space=4):
+def tabsToSpaces(string, tab_space=4):
     return string.replace('\t', tab_space*' ')
 
-def append_to_end_of_string(string, string_to_append):
-    lines = tabs_to_spaces(string).split('\n')
+def appendToEndOfString(string, string_to_append):
+    endInNewline = False
+    if string[-1] == '\n':
+        endInNewline = True
+        string = string[:-1]
+
+    lines = tabsToSpaces(string).split('\n')
     max_line_length = max([len(line) for line in lines])
     pad_formatter = "{:%s}" % (max_line_length + 1)
-    return '\n'.join([pad_formatter.format(line) + string_to_append for line in lines])
+    output = '\n'.join([pad_formatter.format(line) + string_to_append for line in lines])
+    if endInNewline:
+        output += '\n'
+    return output
 
 def uuid(bits=24):
     return ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(bits))

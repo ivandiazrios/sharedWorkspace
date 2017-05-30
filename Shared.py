@@ -1,7 +1,7 @@
 from XcodeProject import XcodeProject
 from PlistWriter import PlistWriter
 from PlistCombiner import PlistCombiner
-from Utils import appendToEndOfString
+from SharedWorkspace import SharedWorkspace
 import os
 
 PROJECT1_PATH = "/Users/Ivan/Desktop/Test/Test"
@@ -15,7 +15,10 @@ if __name__ == "__main__":
     modifiedPlistPath = targetProject.plistFilePath + "tmp"
     combinedPlistPath = targetProject.plistFilePath + "final"
 
-    PlistWriter(modifiedPlistPath).write(targetProject.plistObj)
+    sharedWorkspace = SharedWorkspace(targetProject, sharedProject)
+    sharedWorkspace.share()
+
+    PlistWriter(modifiedPlistPath).write(sharedWorkspace.outputPlist)
     combiner = PlistCombiner(combinedPlistPath, targetProject.plistFilePath, modifiedPlistPath)
     combiner.combine()
 

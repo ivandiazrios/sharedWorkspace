@@ -33,6 +33,8 @@ class PlistCombiner:
         self.targetGen = Lookahead(targetLineTokenizer.tokenizedLines())
         self.modifiedGen = Lookahead(modifiedLineTokenizer.tokenizedLines())
 
+        self.modifiedLinesBuffer = ""
+
         while True:
             target = self.targetGen.peek()
             modified = self.modifiedGen.peek()
@@ -59,18 +61,29 @@ class PlistCombiner:
             self.output.write("---------------------------------" + "\n")
 
         if self.isBlankLine(targetTokens) or self.isOnlyComments(targetTokens):
+            self.clearBuffer()
+
             self.output.write(targetLine)
             self.targetGen.next()
 
         elif self.tokensAreTheSameWithStrippedComments(targetTokens, modifiedTokens):
+            self.clearBuffer()
+
             self.output.write(targetLine)
             # Throw away values
             self.targetGen.next()
             self.modifiedGen.next()
 
         else:
-            self.output.write(modifiedLine)
+            self.modifiedLinesBuffer += modifiedLine
             self.modifiedGen.next()
+
+    def clearBuffer(self):
+        if not self.modifiedLinesBuffer:
+            return
+
+        self.output.writelines(appendToEndOfString(self.modifiedLinesBuffer, SHARED_WORKSPACE_SIGNATURE))
+        self.modifiedLinesBuffer = ""
 
     def isOnlyComments(self, targetTokens):
         return all(map(lambda x: type(x) == Token and x.token_type == TOKEN_COMMENT, targetTokens))
@@ -85,10 +98,6 @@ class PlistCombiner:
         return filter(lambda x: type(x) == Token and x.token_type != TOKEN_COMMENT, tokens)
 
     def annotateLineWithToolSignature(self, line):
-        endsInNewline = False
+        return appendToEndOfString(line, SHARED_WORKSPACE_SIGNATURE)
 
-        if line[-1] == '\n':
-            endsInNewline = True
-            line.rstrip(chars="\n")
 
-        appendToEndOfString()

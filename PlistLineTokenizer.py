@@ -1,5 +1,5 @@
 from StringIO import StringIO
-from PlistParser import Tokenizer
+from PlistParser import Tokenizer, Token, TOKEN_COMMENT
 
 class PlistLineTokenizer:
     def __init__(self, string_or_stream):
@@ -19,6 +19,15 @@ class PlistLineTokenizer:
     def tokenizedLines(self):
         for line in self.lines():
             self.tokenizer.input = StringIO(line)
-            tokens = list(self.tokenizer.tokenize(ignoring_comments=False))[:-1]
-            yield line, tokens
+            tokens = PlistTokenLine(self.tokenizer.tokenize(ignoring_comments=False))[:-1]
+            return tokens
+
+class PlistTokenLine:
+    def __init__(self, tokens):
+        self.tokens = tuple(tokens)
+
+    def __hash__(self):
+        return self.tokens.filter(lambda x: x.token_type != TOKEN_COMMENT)
+
+    def __eq__(self, other):
 

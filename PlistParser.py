@@ -24,7 +24,7 @@ def isHex(x):
     return x.isdigit() or x in char_range('a', 'f') or x == ' '
 
 def isIdentifierChar(x):
-    return x.isalnum() or x in "/._"
+    return x.isalnum() or x in "/._-"
 
 def strip_end(text, suffix):
     if not text.endswith(suffix):
@@ -40,8 +40,10 @@ class Token(object):
         return "(%s, %s)" % (self.token_type, self.associatedValue)
 
     def __eq__(self, other):
-        return type(other) == type(self) and self.__dict__ == other.__dict__
+        return type(other) == type(self) and self.token_type == other.token_type and self.associatedValue == other.associatedValue
 
+    def __hash__(self):
+        return (self.token_type, self.associatedValue).__hash__()
 
 class Parser:
     def __init__(self, string_or_stream):
@@ -152,9 +154,11 @@ class Tokenizer:
         self.ignoring_comments = kwargs.get("ignoring_comments", True)
         self.include_xcode_sections = kwargs.get("include_xcode_sections")
         self.look_ahead = None
+        self.lastToken = None
 
         next_token = self.next_token()
         while next_token.token_type != TOKEN_END:
+            self.lastToken = next_token
             yield next_token
             next_token = self.next_token()
 
@@ -170,7 +174,7 @@ class Tokenizer:
         elif next_char == "/" and self.peek_is_comment():
             return self.process_comment()
         elif next_char == "\"":
-            return Token(TOKEN_STRING, self.value_until_str('\"', initial_char=next_char, inclusive=True))
+            return Token(TOKEN_STRING, self.value_until_str('\"', initial_char=next_char, inclusive=True, ignore_if_escaped=True))
         elif next_char == "<":
             return Token(TOKEN_DATA, self.value_until_str(">", character_validation_func=isHex, initial_char=next_char))
         elif next_char == '{':
@@ -231,6 +235,7 @@ class Tokenizer:
         value = kwargs.get('initial_char', '')
         character_validation_func = kwargs.get('character_validation_func', (lambda _: True))
         inclusive = kwargs.get("inclusive", False)
+        ignore_if_escaped = kwargs.get('ignore_if_escaped', False)
 
         while True:
             next_char = self.next_char()
@@ -238,7 +243,7 @@ class Tokenizer:
                 raise ValueError("INVALID CHARACTER")
 
             value += next_char
-            if value.endswith(str):
+            if value.endswith(str) and not (ignore_if_escaped and value.endswith('\\' + str)):
                 if inclusive:
                     return value
                 else:

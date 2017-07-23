@@ -1,3 +1,5 @@
+from collections import OrderedDict
+
 class PlistWriter:
     def __init__(self, output_stream):
         self.output = output_stream
@@ -17,7 +19,7 @@ class PlistWriter:
     def write_plist(self, plist):
         if isinstance(plist, dict):
             if plist.get("isa", None) in ["PBXFileReference", "PBXBuildFile"]:
-                self.write_fileref_dict(plist)
+                self.write_inline(plist)
             else:
                 self.write_dict(plist)
         elif type(plist) == str:
@@ -51,13 +53,25 @@ class PlistWriter:
 
         self.write_indent(")")
 
-    def write_fileref_dict(self, plist):
-        self.output.write("{")
-
-        for k, v in plist.iteritems():
-            self.output.write("%s = %s; " % (k, v))
-
-        self.output.write("}")
+    def write_inline(self, plist):
+        if isinstance(plist, dict):
+            self.output.write('{')
+            for k,v in plist.iteritems():
+                self.write_inline(k)
+                self.output.write(" = ")
+                self.write_inline(v)
+                self.output.write("; ")
+            self.output.write('}')
+        elif type(plist) == list:
+            self.output.write('(')
+            for item in plist:
+                self.write_inline(item)
+                self.output.write(', ')
+            self.output.write(')')
+        elif type(plist) == str:
+            self.write_str(plist)
+        elif type(plist) == int:
+            self.write_int(plist)
 
     def write_dict(self, plist):
         self.output.write("{\n")

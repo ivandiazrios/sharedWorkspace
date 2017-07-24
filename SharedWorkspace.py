@@ -27,7 +27,7 @@ class SharedWorkspace(object):
                 "containerPortal": self.containerPortal,
                 "proxyType": 2,
                 "remoteGlobalIDString": target.productReference,
-                "remoteInfo": self.sharedProject.projectName
+                "remoteInfo": target.remoteInfo
             }
 
     def addFileReference(self):
@@ -51,11 +51,26 @@ class SharedWorkspace(object):
         for target in self.sharedProject.targets:
             self.outputPlist["objects"][self.referenceProxyTargetIds[target.productReference]] = {
                 "isa": "PBXReferenceProxy",
-                "fileType": "wrapper.framework",
+                "fileType": self.fileTypeForContainerProxy(self.containerItemProxyTargetIds[target.productReference]),
                 "path": "%s" % self.sharedProject.plistObj["objects"][target.productReference]["path"],
                 "remoteRef": self.containerItemProxyTargetIds[target.productReference],
                 "sourceTree": "BUILT_PRODUCTS_DIR"
             }
+
+    def fileTypeForContainerProxy(self, containerProxyId):
+        remoteId = self.targetProject.plistObj["objects"][containerProxyId]["remoteGlobalIDString"]
+        return self.sharedProject.plistObj["objects"][remoteId]["explicitFileType"]
+
+    def idOfTargetToAddToFrameworkPhase(self):
+        for target in self.sharedProject.targets:
+            if self.sharedProject.plistObj["objects"][target.productReference]["path"].startswith("lib"):
+                return self.referenceProxyTargetIds[target.productReference]
+
+    def addLibBuildFile(self):
+        self.targetProject.plistObj["objects"][self.libFileId] = {
+            "isa": "PBXBuildFile",
+            "fileRef": self.idOfTargetToAddToFrameworkPhase()
+        }
 
     def addProjectReference(self):
         projectId = self.targetProject.plistObj["rootObject"]
@@ -87,9 +102,16 @@ class SharedWorkspace(object):
                 fileref = self.targetProject.plistObj["objects"][file]["fileRef"]
                 if self.targetProject.plistObj["objects"][fileref]["name"].startswith(self.sharedProject.projectName):
                     fileToRemove = file
+                    frameworkPhaseFiles.remove(fileToRemove)
+                    del self.targetProject.plistObj["objects"][fileToRemove]
                     break
 
-            frameworkPhaseFiles.remove(fileToRemove)
+            self.addLibBuildFile()
+            frameworkPhaseFiles.insert(0, self.libFileId)
+
+    @lazy_property
+    def libFileId(self):
+        return uuid(24)
 
     @lazy_property
     def referenceProxyTargetIds(self):

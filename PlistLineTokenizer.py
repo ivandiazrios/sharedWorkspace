@@ -19,15 +19,18 @@ class PlistLineTokenizer:
     def tokenizedLines(self):
         for line in self.lines():
             self.tokenizer.input = StringIO(line)
-            tokens = PlistTokenLine(self.tokenizer.tokenize(ignoring_comments=False))[:-1]
-            return tokens
+            tokens = PlistTokenLine(list(self.tokenizer.tokenize(ignoring_comments=False))[:-1])
+            yield line, tokens
 
 class PlistTokenLine:
     def __init__(self, tokens):
         self.tokens = tuple(tokens)
 
+    def filteredTokens(self):
+        return filter(lambda x: x.token_type != TOKEN_COMMENT, self.tokens)
+
     def __hash__(self):
-        return self.tokens.filter(lambda x: x.token_type != TOKEN_COMMENT)
+        return self.filteredTokens().__hash__()
 
     def __eq__(self, other):
-
+        return type(self) == type(other) and self.filteredTokens() == other.filteredTokens()

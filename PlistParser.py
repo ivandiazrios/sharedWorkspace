@@ -93,10 +93,7 @@ class Parser:
 
     def parse_identifier(self, token):
         val = token.associatedValue
-        if False: #val.isdigit():
-            return int(val)
-        else:
-            return val
+        return val
 
     def parse_string(self, token):
         return "%s" % token.associatedValue

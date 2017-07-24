@@ -35,7 +35,8 @@ class XcodeProject:
             if v["isa"] == "PBXNativeTarget":
                 targetName = v["productName"]
                 targetProductReference = v["productReference"]
-                target = Target(targetName, targetProductReference)
+                remoteInfo = v["name"]
+                target = Target(targetName, targetProductReference, remoteInfo)
                 targets.append(target)
 
         return targets
@@ -49,6 +50,7 @@ class XcodeProject:
         return self.plistObj["objects"][self.rootObject]["mainGroup"]
 
 class Target:
-    def __init__(self, name, productReference):
+    def __init__(self, name, productReference, remoteInfo):
         self.name = name
         self.productReference = productReference
+        self.remoteInfo = remoteInfo

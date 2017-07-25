@@ -11,60 +11,73 @@ class PlistModifier:
         self.reader = Lookahead(PlistLineTokenizer(self.input))
         self.additionDict = additionDict
         self.subtractionDict = subtractionDict
-
-
+        self.tokens = None
         self.output = []
-        self.currentKey = None
-        self.keyStack = []
-        self.current = None
+        self.appendToOutput = True
 
-    def tokens(self):
-        self.lineBuffer = []
+    def next_token(self):
+        if self.tokens:
+            return self.tokens.pop(0)
+        else:
+            try:
+                line, self.tokens = self.reader.next()
+            except StopIteration:
+                return None
 
-        for line, tokens in self.reader:
-            for token in tokens:
-                yield token
-            self.lineBuffer.append(line)
+            if self.appendToOutput:
+                self.output.append(line)
 
-    def keys(self, level):
-        self.currentKeyLevel = 0
-        self.leavingKeyLevel = False
+            return self.next_token()
 
+    def keysForLevel(self, level):
+        currentLevel = level - 1
         expectingKey = False
 
-        for token in self.tokens():
-            if self.keyLevel == self.currentKeyLevel and expectingKey and token.token_type == TOKEN_IDENTIFIER:
+        token = self.next_token()
+        while token:
+            if level == currentLevel and expectingKey and token.token_type == TOKEN_IDENTIFIER:
                 yield token.associatedValue
                 expectingKey = False
+                token = self.next_token()
                 continue
 
             if token.token_type == TOKEN_BEGIN_DICTIONARY:
-                self.currentKeyLevel += 1
-                expectingKey = True
-            elif token.token_type == TOKEN_SEMICOLON:
+                currentLevel += 1
                 expectingKey = True
             elif token.token_type == TOKEN_END_DICTIONARY:
-                self.currentKeyLevel -= 1
-                self.leavingKeyLevel = True
+                currentLevel -= 1
+            elif token.token_type == TOKEN_SEMICOLON:
+                if currentLevel < level:
+                    break
+                else:
+                    expectingKey = True
+
+            token = self.next_token()
 
     def filterForTokenType(self, tokenType, tokens):
         return filter(lambda token: token.token_type == tokenType, tokens)
 
-    def processKeysForLevel(self, level):
+    def processKeysForLevel(self, level, additions, subtractions):
+        for key in self.keysForLevel(level):
+            self.appendToOutput = True
 
+            if key in subtractions:
+                if subtractions[key] == None:
+                    self.appendToOutput = False
+                    del subtractions[key]
+                else:
+                    self.processKeysForLevel(level+1, additions.get(key, {}), subtractions[key])
 
-    # def enterPlist(self):
-    #     for line, tokens in self.reader:
-    #         self.output.append(line)
-    #         if self.filterComments(tokens) == [Token(TOKEN_BEGIN_DICTIONARY, None)]:
-    #             return
+            elif key in additions:
+                val = additions[key]
+
+                self.processKeysForLevel(level+1, additions[key], {})
+                del additions[key]
+
+        # We've passed through all the keys, check if there are still additions as these are values we will have to add
+        if additions:
+            pass
 
     def process(self):
-        self.keyLevel = 1
-
-        for key in self.keys():
-            self.output += self.lineBuffer
-
-
-
-
+        self.processKeysForLevel(1, self.additionDict, self.subtractionDict)
+        return ''.join(self.lineBuffer)

@@ -20,4 +20,6 @@ if __name__ == "__main__":
     sharedWorkspace = SharedWorkspace(targetProject, sharedProject)
     additionDict, subtractDict = sharedWorkspace.share()
 
-    PlistModifier(targetProject.plistFilePath, additionDict, subtractDict).process()
+    output = PlistModifier(targetProject.plistFilePath, additionDict, subtractDict).process()
+    with open(targetProject.plistFilePath, 'w') as file:
+        file.write(output)

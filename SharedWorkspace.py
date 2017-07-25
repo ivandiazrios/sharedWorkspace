@@ -110,7 +110,7 @@ class SharedWorkspace(object):
                     break
 
             self.addLibBuildFile()
-            frameworkPhaseFiles.insert(0, self.libFileId)
+            self.additionDict.setdefault("objects", {}).setdefault(targetFrameworkPhase, {}).setdefault("files", []).insert(0, self.libFileId)
 
     @lazy_property
     def libFileId(self):

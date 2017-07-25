@@ -1,5 +1,3 @@
-from collections import OrderedDict
-
 class PlistWriter:
     def __init__(self, output_stream):
         self.output = output_stream
@@ -9,11 +7,11 @@ class PlistWriter:
     def write(self, plist, **kwargs):
         indent = kwargs.get("indent", 1)
         use_tabs = kwargs.get("tabs", False)
+        initialIndent = kwargs.get("initialIndent", 0)
         tabsize = 1 if use_tabs else kwargs.get("tabsize", 4)
+
         self.indent_str = (" " * tabsize if use_tabs else "\t") * indent
-
-        self.current_indent = 0
-
+        self.current_indent = initialIndent
         self.write_plist(plist)
 
     def write_plist(self, plist):

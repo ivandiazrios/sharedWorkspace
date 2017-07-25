@@ -1,6 +1,6 @@
 from XcodeProject import XcodeProject
 from SharedWorkspace import SharedWorkspace
-from PlistModifier import PlistModifier
+from PlistModifier2 import PlistModifier
 import argparse
 
 if __name__ == "__main__":
@@ -19,6 +19,6 @@ if __name__ == "__main__":
     sharedWorkspace = SharedWorkspace(targetProject, sharedProject)
     additionDict, subtractDict = sharedWorkspace.share()
 
-    output = PlistModifier(targetProject.plistFilePath, additionDict, subtractDict).process()
+    output = PlistModifier(targetProject.plistFilePath).process(additionDict, subtractDict)
     with open(targetProject.plistFilePath, 'w') as file:
         file.write(output)

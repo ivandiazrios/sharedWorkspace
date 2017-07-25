@@ -1,6 +1,6 @@
 from XcodeProject import XcodeProject
 from SharedWorkspace import SharedWorkspace
-from PlistModifier2 import PlistModifier
+from PlistModifier import PlistModifier
 import argparse
 
 if __name__ == "__main__":

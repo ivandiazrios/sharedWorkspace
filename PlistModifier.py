@@ -42,7 +42,6 @@ class PlistModifier:
             l.reverse()
 
     def getParsedItemFromItem(self, item):
-        copyitem = item
         item.pos = 0
         tokens = list(Tokenizer(item).tokenize())
         self.removeLastOccurenceFromList(tokens, Token(TOKEN_COMMA, None))
@@ -128,8 +127,8 @@ class PlistModifier:
 
         if additionDict:
             self.addKeyValuesFromDict(additionDict)
+            additionDict.clear()
 
-        additionDict.clear()
         self.shouldWrite = True
 
     def dictKeys(self):
@@ -162,7 +161,9 @@ class PlistModifier:
             self.addNewItemsToList(additionItems)
             del additionItems[:]
 
+        self.saveCurrentLine()
         self.writeToBuffer = True
+
         for item in self.getListItems():
             # Item will be the string sat in the line buffer which we need to parse, it will also end in a comma
             item = self.getParsedItemFromItem(item)

@@ -6,7 +6,8 @@ class SharedWorkspace(object):
         self.targetProject = targetProject
         self.sharedProject = sharedProject
 
-        self.outputPlist = self.targetProject.plistObj
+        self.additionDict = {}
+        self.subtractionDict = {}
 
     def share(self):
         self.addFileReference()
@@ -17,12 +18,14 @@ class SharedWorkspace(object):
         self.addProjectReference()
         self.replaceDependFrameworkWithSharedWorkspaceLib()
 
+        return self.additionDict, self.subtractionDict
+
     def addChildToMainGroup(self):
-        self.outputPlist["objects"][self.targetProject.mainGroup]["children"].insert(0, self.containerPortal)
+        self.additionDict.setdefault("objects", {}).setdefault(self.targetProject.mainGroup, {}).setdefault("children", []).insert(0, self.containerPortal)
 
     def addContainerItemProxies(self):
         for target in self.sharedProject.targets:
-            self.outputPlist["objects"][self.containerItemProxyTargetIds[target.productReference]] = {
+            self.additionDict.setdefault("objects", {})[self.containerItemProxyTargetIds[target.productReference]] = {
                 "isa": "PBXContainerItemProxy",
                 "containerPortal": self.containerPortal,
                 "proxyType": 2,
@@ -31,7 +34,7 @@ class SharedWorkspace(object):
             }
 
     def addFileReference(self):
-        self.outputPlist["objects"][self.containerPortal] = {
+        self.additionDict.setdefault("objects", {})[self.containerPortal] = {
             "isa": "PBXFileReference",
             "lastKnownFileType": "\"wrapper.pb-project\"",
             "name": self.sharedProject.projectName + ".xcodeproj",
@@ -40,7 +43,7 @@ class SharedWorkspace(object):
         }
 
     def addProductGroup(self):
-        self.outputPlist["objects"][self.productGroupId] = {
+        self.additionDict.setdefault("objects", {})[self.productGroupId] = {
             "isa": "PBXGroup",
             "children": [self.referenceProxyTargetIds[target.productReference] for target in self.sharedProject.targets],
             "name": "Products",
@@ -49,7 +52,7 @@ class SharedWorkspace(object):
 
     def addReferenceProxies(self):
         for target in self.sharedProject.targets:
-            self.outputPlist["objects"][self.referenceProxyTargetIds[target.productReference]] = {
+            self.additionDict.setdefault("objects", {})[self.referenceProxyTargetIds[target.productReference]] = {
                 "isa": "PBXReferenceProxy",
                 "fileType": self.fileTypeForContainerProxy(self.containerItemProxyTargetIds[target.productReference]),
                 "path": "%s" % self.sharedProject.plistObj["objects"][target.productReference]["path"],
@@ -58,7 +61,7 @@ class SharedWorkspace(object):
             }
 
     def fileTypeForContainerProxy(self, containerProxyId):
-        remoteId = self.targetProject.plistObj["objects"][containerProxyId]["remoteGlobalIDString"]
+        remoteId = self.additionDict["objects"][containerProxyId]["remoteGlobalIDString"]
         return self.sharedProject.plistObj["objects"][remoteId]["explicitFileType"]
 
     def idOfTargetToAddToFrameworkPhase(self):
@@ -67,7 +70,7 @@ class SharedWorkspace(object):
                 return self.referenceProxyTargetIds[target.productReference]
 
     def addLibBuildFile(self):
-        self.targetProject.plistObj["objects"][self.libFileId] = {
+        self.additionDict.setdefault("objects", {})[self.libFileId] = {
             "isa": "PBXBuildFile",
             "fileRef": self.idOfTargetToAddToFrameworkPhase()
         }
@@ -82,7 +85,7 @@ class SharedWorkspace(object):
         }
 
         projectReferences.append(projectReference)
-        self.targetProject.plistObj["objects"][projectId]["projectReferences"] = projectReferences
+        self.additionDict.setdefault("objects", {}).setdefault(projectId, {})["projectReferences"] = projectReferences
 
     def replaceDependFrameworkWithSharedWorkspaceLib(self):
         allFrameworkBuildPhases = [k for k, v in self.getAllObjectsOfISA(self.targetProject.plistObj, "PBXFrameworksBuildPhase")]
@@ -102,8 +105,8 @@ class SharedWorkspace(object):
                 fileref = self.targetProject.plistObj["objects"][file]["fileRef"]
                 if self.targetProject.plistObj["objects"][fileref]["name"].startswith(self.sharedProject.projectName):
                     fileToRemove = file
-                    frameworkPhaseFiles.remove(fileToRemove)
-                    del self.targetProject.plistObj["objects"][fileToRemove]
+                    self.subtractionDict.setdefault("objects", {}).setdefault(targetFrameworkPhase, {}).setdefault("files", []).insert(0, fileToRemove)
+                    self.subtractionDict["objects"][fileToRemove] = None
                     break
 
             self.addLibBuildFile()

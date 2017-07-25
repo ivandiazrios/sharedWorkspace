@@ -1,11 +1,7 @@
 from XcodeProject import XcodeProject
-from PlistWriter import PlistWriter
-from PlistParser import Parser
-from PlistCombiner import PlistCombiner
 from SharedWorkspace import SharedWorkspace
-import os
+from PlistModifier import PlistModifier
 import argparse
-import StringIO
 
 if __name__ == "__main__":
 
@@ -22,14 +18,6 @@ if __name__ == "__main__":
     sharedProject = XcodeProject(sharedProjectPath)
 
     sharedWorkspace = SharedWorkspace(targetProject, sharedProject)
-    sharedWorkspace.share()
+    additionDict, subtractDict = sharedWorkspace.share()
 
-    modifiedOutputBuffer = StringIO.StringIO()
-    PlistWriter(modifiedOutputBuffer).write(sharedWorkspace.outputPlist)
-    modifiedOutputBuffer.pos = 0
-
-    with open(targetProject.plistFilePath, 'r') as inputFile:
-        inputBuffer = StringIO.StringIO(inputFile.read())
-
-    combiner = PlistCombiner(targetProject.plistFilePath, inputBuffer, modifiedOutputBuffer)
-    combiner.combine()
+    PlistModifier(targetProject.plistFilePath, additionDict, subtractDict).process()

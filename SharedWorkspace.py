@@ -77,15 +77,13 @@ class SharedWorkspace(object):
 
     def addProjectReference(self):
         projectId = self.targetProject.plistObj["rootObject"]
-        projectReferences = self.targetProject.plistObj["objects"][projectId].get("projectReferences", [])
 
         projectReference = {
             "ProductGroup": self.productGroupId,
             "ProjectRef": self.containerPortal
         }
 
-        projectReferences.append(projectReference)
-        self.additionDict.setdefault("objects", {}).setdefault(projectId, {})["projectReferences"] = projectReferences
+        self.additionDict.setdefault("objects", {}).setdefault(projectId, {}).setdefault("projectReferences", []).insert(0, projectReference)
 
     def replaceDependFrameworkWithSharedWorkspaceLib(self):
         allFrameworkBuildPhases = [k for k, v in self.getAllObjectsOfISA(self.targetProject.plistObj, "PBXFrameworksBuildPhase")]
@@ -103,7 +101,7 @@ class SharedWorkspace(object):
 
             for file in frameworkPhaseFiles:
                 fileref = self.targetProject.plistObj["objects"][file]["fileRef"]
-                if self.targetProject.plistObj["objects"][fileref]["name"].startswith(self.sharedProject.projectName):
+                if self.targetProject.plistObj["objects"][fileref].get("name", "").startswith(self.sharedProject.projectName):
                     fileToRemove = file
                     self.subtractionDict.setdefault("objects", {}).setdefault(targetFrameworkPhase, {}).setdefault("files", []).insert(0, fileToRemove)
                     self.subtractionDict["objects"][fileToRemove] = None

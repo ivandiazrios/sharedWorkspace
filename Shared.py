@@ -4,7 +4,6 @@ from PlistModifier import PlistModifier
 import argparse
 
 if __name__ == "__main__":
-
     # Command line arguments #####################
     commandLineParser = argparse.ArgumentParser()
     commandLineParser.add_argument("project1", help="Path to first project")

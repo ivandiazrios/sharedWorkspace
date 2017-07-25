@@ -1,7 +1,7 @@
-from Utils import Lookahead
 from PlistParser import *
 from PlistLineTokenizer import PlistLineTokenizer
 from Writer import Writer
+from StringIO import StringIO
 
 class PlistModifier:
     def __init__(self, string_or_stream, additionDict, subtractionDict):
@@ -9,12 +9,12 @@ class PlistModifier:
         if type(self.input) in (str, unicode):
             self.input = open(self.input, 'r')
 
-        self.reader = Lookahead(PlistLineTokenizer(self.input))
+        self.output = StringIO()
+        self.reader = PlistLineTokenizer(self.input)
         self.additionDict = additionDict
         self.subtractionDict = subtractionDict
         self.tokens = None
         self.line = None
-        self.output = []
         self.appendToOutput = True
         self.indentLevel = 0
         self.plistWriter = Writer()
@@ -24,7 +24,7 @@ class PlistModifier:
             return self.tokens.pop(0)
         else:
             if self.appendToOutput and self.line:
-                self.output.append(self.line)
+                self.output.write(self.line)
             try:
                 self.line, self.tokens = self.reader.next()
             except StopIteration:
@@ -32,16 +32,18 @@ class PlistModifier:
 
             return self.next_token()
 
-    def filterForTokenType(self, tokenType, tokens):
-        return filter(lambda token: token.token_type == tokenType, tokens)
+    def clearLineBuffer(self):
+        self.output.write(self.line)
+        self.line = []
 
     def process(self):
         self.processValue(self.additionDict, self.subtractionDict)
-        self.output += self.line
-        return ''.join(self.output)
+        self.clearLineBuffer()
+        return self.output.getvalue()
 
     def processValue(self, additions, deletions):
         token = self.next_token()
+        # While loop to skip comments
         while token:
             if token.token_type == TOKEN_BEGIN_DICTIONARY:
                 self.indentLevel += 1
@@ -87,19 +89,15 @@ class PlistModifier:
 
         if additions:
             for k,v in additions.iteritems():
-                self.output.append(self.plistWriter.writeKeyValue(k, v, initial_indent=self.indentLevel))
+                self.output.write(self.plistWriter.writeKeyValue(k, v, initial_indent=self.indentLevel))
 
     def processList(self, additions, subtractions):
-        assert type(additions) == list or additions is None
-        assert type(subtractions) == list or subtractions is None
+        # Write new items at beginning of list
+        if additions:
+            self.clearLineBuffer()
+            self.output.write(self.plistWriter.writeListItems(additions, initial_indent=self.indentLevel))
 
         for item in self.itemsForLevel():
-
-            # Write new items at beginning of list
-            if additions:
-                self.output.append(self.plistWriter.writeListItems(additions, initial_indent=self.indentLevel))
-                additions = None
-
             self.appendToOutput = True
 
             if subtractions and item in subtractions:
@@ -150,6 +148,7 @@ class PlistModifier:
             elif token.token_type == TOKEN_END_DICTIONARY:
                 currentLevel -= 1
                 if not currentLevel:
+
                     break
             elif token.token_type == TOKEN_SEMICOLON:
                 expectingKey = True

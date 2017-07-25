@@ -6,7 +6,7 @@ import sys
 import StringIO
 import difflib
 
-SHARED_WORKSPACE_SIGNATURE = "// Shared workspace tool"
+SPACE_OR_COMMENT_PLIST_TOKENLINE = PlistTokenLine([])
 
 class PlistCombiner:
     def __init__(self, finalPath, targetPath, modifiedPath):
@@ -45,7 +45,7 @@ class PlistCombiner:
 
             if tag == 'delete':
                 for indexToDelete in reversed(range(i1, i2)):
-                    if targetTokens[indexToDelete] == PlistTokenLine([]):
+                    if targetTokens[indexToDelete] == SPACE_OR_COMMENT_PLIST_TOKENLINE:
                         continue
                     else:
                         del targetLines[indexToDelete]
@@ -54,12 +54,22 @@ class PlistCombiner:
                 targetLines[i1:i2] = modifiedLines[j1:j2]
 
             elif tag == 'replace':
-                for indexToReplace in reversed(range(i1, i2)):
-                    if targetTokens[indexToReplace] == PlistTokenLine([]):
-                        i2 -= 1
-                    else:
-                        continue
+                # Only replace the lines if they contain something besides empty lines or lines with only comments
+                # If not just add the replacement lines after the comment/empty lines.
+                print "Replace..."
+                print ''.join(targetLines[i1:i2])
+                print "With..."
+                print ''.join(modifiedLines[j1:j2])
+
                 targetLines[i1:i2] = modifiedLines[j1:j2]
+                continue
+
+                x = targetTokens[i1:i2]
+                y = filter(lambda x: x != SPACE_OR_COMMENT_PLIST_TOKENLINE, targetTokens[i1:i2])
+                if any(filter(lambda x: x != SPACE_OR_COMMENT_PLIST_TOKENLINE, targetTokens[i1:i2])):
+                    targetLines[i1:i2] = modifiedLines[j1:j2]
+                else:
+                    targetLines[i1:i1] = modifiedLines[j1:j2]
 
         self.output = StringIO.StringIO(''.join(targetLines))
         self.writeOutput()

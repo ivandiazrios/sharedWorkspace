@@ -34,3 +34,6 @@ class PlistTokenLine:
 
     def __eq__(self, other):
         return type(self) == type(other) and self.filteredTokens() == other.filteredTokens()
+
+    def __ne__(self, other):
+        return not self == other

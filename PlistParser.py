@@ -149,7 +149,6 @@ class Tokenizer:
 
     def tokenize(self, **kwargs):
         self.ignoring_comments = kwargs.get("ignoring_comments", True)
-        self.include_xcode_sections = kwargs.get("include_xcode_sections")
         self.look_ahead = None
         self.lastToken = None
 

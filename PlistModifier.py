@@ -99,7 +99,7 @@ class PlistModifier:
                 return
             elif token.token_type == TOKEN_BEGIN_LIST:
                 self.indentLevel += 1
-                self.processBasicList(additionDict, subtractionDict)
+                self.processList(additionDict, subtractionDict)
                 self.indentLevel -= 1
                 return
 
@@ -157,6 +157,12 @@ class PlistModifier:
 
     # Process list methods
     def processList(self, additionItems, subtractionItems):
+        if any(filter(lambda x: type(x) in [dict, list], subtractionItems)):
+            self.processAdvancedList(additionItems, subtractionItems)
+        else:
+            self.processBasicList(additionItems, subtractionItems)
+
+    def processAdvancedList(self, additionItems, subtractionItems):
         if additionItems:
             self.addNewItemsToList(additionItems)
             del additionItems[:]
@@ -164,7 +170,7 @@ class PlistModifier:
         self.saveCurrentLine()
         self.writeToBuffer = True
 
-        for item in self.getListItems():
+        for item in self.getAdvancedListItems():
             # Item will be the string sat in the line buffer which we need to parse, it will also end in a comma
             item = self.getParsedItemFromItem(item)
             if subtractionItems and item in subtractionItems:
@@ -189,7 +195,7 @@ class PlistModifier:
 
         self.shouldWrite = True
 
-    def getListItems(self):
+    def getAdvancedListItems(self):
         currentLevel = 1
         hasPriorItem = False
 
@@ -223,8 +229,7 @@ class PlistModifier:
                 # We don't have a need for other values but identifiers and strings in lists
                 if token.token_type in [TOKEN_IDENTIFIER, TOKEN_STRING]:
                     yield token.associatedValue
-                    expectingItem = False
-                    token = self.next_token()
+                expectingItem = False
 
             if token.token_type == TOKEN_BEGIN_LIST:
                 currentLevel += 1

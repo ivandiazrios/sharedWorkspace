@@ -32,7 +32,7 @@ class XcodeProject:
         targets = []
 
         for k, v in self.plistObj["objects"].iteritems():
-            if v["isa"] == "PBXNativeTarget":
+            if v.get("isa", "") == "PBXNativeTarget":
                 targetName = v["productName"]
                 targetProductReference = v["productReference"]
                 remoteInfo = v["name"]

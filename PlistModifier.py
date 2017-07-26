@@ -157,7 +157,7 @@ class PlistModifier:
 
     # Process list methods
     def processList(self, additionItems, subtractionItems):
-        if any(filter(lambda x: type(x) in [dict, list], subtractionItems)):
+        if subtractionItems and any(filter(lambda x: type(x) in [dict, list], subtractionItems)):
             self.processAdvancedList(additionItems, subtractionItems)
         else:
             self.processBasicList(additionItems, subtractionItems)

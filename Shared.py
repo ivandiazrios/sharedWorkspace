@@ -6,17 +6,17 @@ import argparse
 if __name__ == "__main__":
     # Command line arguments #####################
     commandLineParser = argparse.ArgumentParser()
-    commandLineParser.add_argument("project1", help="Path to first project")
-    commandLineParser.add_argument("project2", help="Path to second project")
+    commandLineParser.add_argument("targetProjectPath", help="Path to first project")
+    commandLineParser.add_argument('-s', '--shared', nargs='+', type=str)
     commandLineArgs = commandLineParser.parse_args()
-    targetProjectPath = commandLineArgs.project1
-    sharedProjectPath = commandLineArgs.project2
+    targetProjectPath = commandLineArgs.targetProjectPath
+    sharedProjectPaths = commandLineArgs.shared
     ##############################################
 
     targetProject = XcodeProject(targetProjectPath)
-    sharedProject = XcodeProject(sharedProjectPath)
+    sharedProjectPaths = [XcodeProject(sharedProjectPath) for sharedProjectPath in sharedProjectPaths]
 
-    sharedWorkspace = SharedWorkspace(targetProject, sharedProject)
+    sharedWorkspace = SharedWorkspace(targetProject, *sharedProjectPaths)
     additionDict, subtractDict = sharedWorkspace.share()
 
     output = PlistModifier(targetProject.plistFilePath).process(additionDict, subtractDict)

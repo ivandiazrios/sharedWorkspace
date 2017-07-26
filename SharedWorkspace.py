@@ -10,8 +10,9 @@ class SharedWorkspace(object):
         self.subtractionDict = {}
 
     def share(self):
-
         for sharedProject in self.sharedProjects:
+            targetToShare = self.targetToShareFromProject(sharedProject)
+
             self.sharedProject = sharedProject
             self.resetShared()
 
@@ -25,6 +26,9 @@ class SharedWorkspace(object):
             self.addToTargetDepend()
 
         return self.additionDict, self.subtractionDict
+
+    def targetToShareFromProject(self, project):
+
 
     def resetShared(self):
         self.containerPortal = uuid(24)

@@ -39,3 +39,7 @@ class Lookahead:
             except StopIteration:
                 return None
         return self.buffer[n]
+
+def itemsWithValueContainingKeyValues(dict, *keyValues):
+    allKeyValuesInDict = lambda _, dict: all(dict.get(k, None) == v for k, v in keyValues)
+    return filter(allKeyValuesInDict, dict)

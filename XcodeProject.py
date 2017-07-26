@@ -12,8 +12,8 @@ class XcodeProject:
 
     @lazy_property
     def projectFilePath(self):
-        os.chdir(self.projectPath)
-        files = glob.glob("*.xcodeproj")
+        globPath = os.path.join(self.projectPath, "*.xcodeproj")
+        files = glob.glob(globPath)
         assert len(files) == 1
         return os.path.join(os.getcwd(), files[0])
 
@@ -36,7 +36,8 @@ class XcodeProject:
                 targetName = v["productName"]
                 targetProductReference = v["productReference"]
                 remoteInfo = v["name"]
-                target = Target(targetName, targetProductReference, remoteInfo)
+                id = k
+                target = Target(id, targetName, targetProductReference, remoteInfo)
                 targets.append(target)
 
         return targets
@@ -50,7 +51,8 @@ class XcodeProject:
         return self.plistObj["objects"][self.rootObject]["mainGroup"]
 
 class Target:
-    def __init__(self, name, productReference, remoteInfo):
+    def __init__(self, id, name, productReference, remoteInfo):
+        self.id = id
         self.name = name
         self.productReference = productReference
         self.remoteInfo = remoteInfo

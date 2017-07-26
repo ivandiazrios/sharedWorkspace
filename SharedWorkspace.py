@@ -1,4 +1,4 @@
-from Utils import uuid, lazy_property
+from Utils import uuid
 from collections import defaultdict
 
 class SharedWorkspace(object):
@@ -22,6 +22,7 @@ class SharedWorkspace(object):
             self.addProjectReference()
             self.addProductGroup()
             self.replaceDependFrameworkWithSharedWorkspaceLib()
+            self.addToTargetDepend()
 
         return self.additionDict, self.subtractionDict
 
@@ -56,7 +57,7 @@ class SharedWorkspace(object):
         containerItemProxies = self.getAllObjectsWithIsa("PBXContainerItemProxy")
 
         for target in self.sharedProject.targets:
-            containerItemProxyTargetId = self.getKeyOfFirstValueMatchingKeyValue(containerItemProxies, ("remoteGlobalIDString", target.productReference))
+            containerItemProxyTargetId = self.getKeyOfFirstValueMatchingKeyValue(containerItemProxies, ("remoteGlobalIDString", target.productReference), ("proxyType", 2))
             if containerItemProxyTargetId:
                 self.containerItemProxyTargetIds[target.productReference] = containerItemProxyTargetId
                 continue
@@ -193,3 +194,43 @@ class SharedWorkspace(object):
         self.addLibBuildFile()
         if self.libFileId not in self.targetProject.plistObj["objects"].get(targetFrameworkPhase, {}).get("files", []):
             self.additionDict.setdefault("objects", {}).setdefault(targetFrameworkPhase, {}).setdefault("files", []).insert(0, self.libFileId)
+
+    def addToTargetDepend(self):
+        shareTarget = None
+        for target in self.sharedProject.targets:
+            if self.sharedProject.plistObj["objects"][target.productReference]["path"].startswith("lib"):
+                shareTarget = target
+
+        if not shareTarget:
+            return
+
+        containerItemProxies = self.getAllObjectsWithIsa("PBXContainerItemProxy")
+        dependProxy = self.getKeyOfFirstValueMatchingKeyValue(containerItemProxies, ("containerPortal", self.containerPortal), ("remoteGlobalIDString", target.id), ("proxyType", 1))
+        if not dependProxy:
+            dependProxy = uuid()
+            self.additionDict.setdefault("objects", {})[dependProxy] = {
+                "isa": "PBXContainerItemProxy",
+                "containerPortal": self.containerPortal,
+                "proxyType": 1,
+                "remoteGlobalIDString": shareTarget.id,
+                "remoteInfo": shareTarget.remoteInfo
+            }
+
+        targetDependencies = self.getAllObjectsWithIsa("PBXTargetDependency")
+        targetDependency = self.getKeyOfFirstValueMatchingKeyValue(targetDependencies, ("targetProxy", dependProxy))
+        if not targetDependency:
+            targetDependency = uuid(24)
+            self.additionDict.setdefault("objects", {})[targetDependency] = {
+                "isa": "PBXTargetDependency",
+                "name": shareTarget.remoteInfo,
+                "targetProxy": dependProxy
+            }
+
+        targetName = self.targetProject.projectName
+        targets = [target for target in self.targetProject.targets if target.remoteInfo == targetName]
+        if not targets:
+            return
+
+        target = targets[0]
+        if targetDependency not in self.targetProject.plistObj.get("objects", {}).get(target.id, {}).get("dependencies", []):
+            self.additionDict.setdefault("objects", {}).setdefault(target.id, {}).setdefault("dependencies", []).insert(0, targetDependency)

@@ -17,19 +17,6 @@ def lazy_property(fn):
         return getattr(self, attr_name)
     return _lazy_property
 
-def getFullPath(path):
-    if os.path.exists(path):
-        return path
-    elif not os.path.isabs(path):
-        # Try to find it under current directory
-        cd = os.getcwd()
-        fullPath = os.path.join(cd, path)
-        if os.path.exists(fullPath):
-            return fullPath
-
-    raise ValueError("Could not locate directory %s", path)
-
-
 class Lookahead:
     def __init__(self, iter):
         self.iter = iter

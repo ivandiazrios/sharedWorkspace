@@ -4,7 +4,6 @@ from XcodeProject import XcodeProject
 from SharedWorkspace import SharedWorkspace
 from PlistModifier import PlistModifier
 import argparse
-from Utils import getFullPath
 
 if __name__ == "__main__":
     # Command line arguments #####################
@@ -15,9 +14,6 @@ if __name__ == "__main__":
     targetProjectPath = commandLineArgs.targetProjectPath
     sharedProjectPaths = commandLineArgs.shared
     ##############################################
-
-    # targetProjectPath = getFullPath(targetProjectPath)
-    # sharedProjectPaths = map(getFullPath, sharedProjectPaths)
 
     targetProject = XcodeProject(targetProjectPath)
     sharedProjectPaths = [XcodeProject(sharedProjectPath) for sharedProjectPath in sharedProjectPaths]

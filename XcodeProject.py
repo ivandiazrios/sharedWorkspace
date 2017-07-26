@@ -1,4 +1,5 @@
-import glob, os
+import glob
+import os
 from PlistParser import Parser
 from Utils import lazy_property
 

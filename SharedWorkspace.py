@@ -1,5 +1,6 @@
 from Utils import uuid
 from collections import defaultdict
+from Constants import *
 
 class SharedWorkspace(object):
     def __init__(self, targetProject, *sharedProjects):
@@ -9,13 +10,18 @@ class SharedWorkspace(object):
         self.additionDict = {}
         self.subtractionDict = {}
 
-    def share(self):
+    def share(self, targetTargetName=None):
+        targetTarget = self.targetTargetFor(targetTargetName)
+
         for sharedProject in self.sharedProjects:
+
             targetToShare = self.targetToShareFromProject(sharedProject)
+            if not targetToShare:
+                continue
 
-            self.sharedProject = sharedProject
-            self.resetShared()
+            self.additionDict, self.removalDict = {}, {}
 
+            self.addFileReference()
             self.addFileReference()
             self.addChildToMainGroup()
             self.addContainerItemProxies()
@@ -28,7 +34,17 @@ class SharedWorkspace(object):
         return self.additionDict, self.subtractionDict
 
     def targetToShareFromProject(self, project):
+        return next((target for target in project.targets if project.plistObj["objects"][target.productReference]["path"].startswith("lib")), None)
 
+    def targetTargetFor(self, targetName):
+        if not targetName:
+            # Use default target name of project if none specified
+            targetName = self.targetProject.projectName
+
+        target = next((target for target in self.targetProject.targets if target.name == targetName), None)
+        if not target:
+            raise MissingTargetException("Cannot find target to merge into")
+        return target
 
     def resetShared(self):
         self.containerPortal = uuid(24)

@@ -2,6 +2,7 @@ import glob
 import os
 from PlistParser import Parser
 from Utils import lazy_property
+from Constants import *
 
 class XcodeProject:
     def __init__(self, projectPath):
@@ -30,30 +31,25 @@ class XcodeProject:
 
     @lazy_property
     def targets(self):
-        targets = []
-
-        for k, v in self.plistObj["objects"].iteritems():
-            if v.get("isa", "") == "PBXNativeTarget":
-                targetName = v["productName"]
-                targetProductReference = v["productReference"]
-                remoteInfo = v["name"]
-                id = k
-                target = Target(id, targetName, targetProductReference, remoteInfo)
-                targets.append(target)
-
-        return targets
+        return [Target.targetFromKeyValues(id, values) for id, values in self.plistObj[OBJECTS_KEY].iteritems() if values.get(ISA_KEY, None) == NATIVE_TARGET_ISA]
 
     @lazy_property
     def rootObject(self):
-        return self.plistObj["rootObject"]
+        return self.plistObj[ROOT_OBJECTS_KEY]
 
     @lazy_property
     def mainGroup(self):
-        return self.plistObj["objects"][self.rootObject]["mainGroup"]
+        return self.plistObj[OBJECTS_KEY][self.rootObject][MAIN_GROUP_KEY]
 
 class Target:
-    def __init__(self, id, name, productReference, remoteInfo):
+    def __init__(self, id, name, productReference):
         self.id = id
         self.name = name
         self.productReference = productReference
-        self.remoteInfo = remoteInfo
+
+    @classmethod
+    def targetFromKeyValues(cls, id, values):
+        id = id
+        name = values[PRODUCT_NAME_KEY]
+        productReference = values[PRODUCT_REFERENCE_KEY]
+        return Target(id, name, productReference)

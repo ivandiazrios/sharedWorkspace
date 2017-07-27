@@ -10,9 +10,11 @@ if __name__ == "__main__":
     commandLineParser = argparse.ArgumentParser()
     commandLineParser.add_argument("targetProjectPath", help="Path to first project")
     commandLineParser.add_argument('-s', '--shared', nargs='+', type=str)
+    commandLineParser.add_argument('-s', '')
     commandLineArgs = commandLineParser.parse_args()
     targetProjectPath = commandLineArgs.targetProjectPath
     sharedProjectPaths = commandLineArgs.shared
+    targetToShareInto = commandLineArgs.target
     ##############################################
 
     targetProject = XcodeProject(targetProjectPath)

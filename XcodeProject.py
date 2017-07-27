@@ -16,8 +16,16 @@ class XcodeProject:
     def projectFilePath(self):
         globPath = os.path.join(self.projectPath, "*.xcodeproj")
         files = glob.glob(globPath)
-        assert len(files) == 1
-        return os.path.join(os.getcwd(), files[0])
+        if files:
+            return files.pop(0)
+
+        # If haven't found it look one level deep
+        globPath = os.path.join(self.projectPath, "*/*.xcodeproj")
+        files = glob.glob(globPath)
+        if files:
+            return files.pop(0)
+
+        raise Exception()
 
     @lazy_property
     def plistFilePath(self):

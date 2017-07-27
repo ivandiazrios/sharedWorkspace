@@ -42,14 +42,16 @@ class XcodeProject:
         return self.plistObj[OBJECTS_KEY][self.rootObject][MAIN_GROUP_KEY]
 
 class Target:
-    def __init__(self, id, name, productReference):
+    def __init__(self, id, name, productReference, buildPhases):
         self.id = id
         self.name = name
         self.productReference = productReference
+        self.buildPhases = buildPhases
 
     @classmethod
     def targetFromKeyValues(cls, id, values):
         id = id
         name = values[PRODUCT_NAME_KEY]
         productReference = values[PRODUCT_REFERENCE_KEY]
-        return Target(id, name, productReference)
+        buildPhases = values[BUILD_PHASES_KEY]
+        return Target(id, name, productReference, buildPhases)

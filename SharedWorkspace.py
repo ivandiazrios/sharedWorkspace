@@ -7,29 +7,30 @@ class SharedWorkspace(object):
         self.targetProject = targetProject
         self.sharedProjects = sharedProjects
 
-        self.additionDict = {}
-        self.subtractionDict = {}
-
     def share(self, targetTargetName=None):
+
+        self.additionDict, self.subtractionDict = {}, {}
         targetTarget = self.targetTargetFor(targetTargetName)
 
         for sharedProject in self.sharedProjects:
+
+            self.isaObjectCache = {}
 
             targetToShare = self.targetToShareFromProject(sharedProject)
             if not targetToShare:
                 continue
 
-            self.additionDict, self.removalDict = {}, {}
+            containerPortal = self.addContainerPortal(sharedProject)
 
-            self.addFileReference()
-            self.addFileReference()
-            self.addChildToMainGroup()
-            self.addContainerItemProxies()
-            self.addReferenceProxies()
-            self.addProjectReference()
-            self.addProductGroup()
-            self.replaceDependFrameworkWithSharedWorkspaceLib()
-            self.addToTargetDepend()
+            self.addChildToMainGroup(containerPortal)
+
+            containerItemProxyIdForTargetReferenceDict = self.addContainerItemProxies(sharedProject, containerPortal)
+            referenceProxyTargetIdForProductReference = self.addReferenceProxies(sharedProject, containerItemProxyIdForTargetReferenceDict)
+            productGroupId = self.addProjectReference(containerPortal)
+
+            self.addProductGroup(sharedProject, productGroupId, referenceProxyTargetIdForProductReference)
+            self.replaceDependFrameworkWithSharedWorkspaceLib(targetTarget, targetToShare, referenceProxyTargetIdForProductReference)
+            self.addToTargetDepend(targetTarget, targetToShare, containerPortal)
 
         return self.additionDict, self.subtractionDict
 
@@ -54,203 +55,204 @@ class SharedWorkspace(object):
         self.containerItemProxyTargetIds = defaultdict(lambda: uuid(24))
 
     def getKeyOfFirstValueMatchingKeyValue(self, l, *keyValues):
-        for k, v in l:
-            keyMatches = True
+        dictContainsKeyValues = lambda dict: all((dict.get(k, None) == v for k, v in keyValues))
+        return next((k for k,v in l if dictContainsKeyValues(v)), None)
 
-            for (key, value) in keyValues:
-                if v.get(key, None) != value:
-                    keyMatches = False
-                    break
-
-            if keyMatches:
-                return k
-
-        return None
-
-    def addChildToMainGroup(self):
-        if self.containerPortal in self.targetProject.plistObj["objects"][self.targetProject.mainGroup].get("children", []):
+    def addChildToMainGroup(self, containerPortal):
+        if containerPortal in self.targetProject.plistObj[OBJECTS_KEY][self.targetProject.mainGroup].get(CHILDREN_KEY, []):
             return
 
-        self.additionDict.setdefault("objects", {}).setdefault(self.targetProject.mainGroup, {}).setdefault("children", []).insert(0, self.containerPortal)
+        self.additionDict.setdefault(OBJECTS_KEY, {}).setdefault(self.targetProject.mainGroup, {}).setdefault(CHILDREN_KEY, []).insert(0, containerPortal)
 
-    def addContainerItemProxies(self):
-        containerItemProxies = self.getAllObjectsWithIsa("PBXContainerItemProxy")
+    def addContainerItemProxies(self, sharedProject, containerPortal):
+        containerItemProxies = self.getAllObjectsWithIsa(CONTAINER_ITEM_PROXY_ISA)
+        containerItemProxyIdForTargetReferenceDict = {}
 
-        for target in self.sharedProject.targets:
-            containerItemProxyTargetId = self.getKeyOfFirstValueMatchingKeyValue(containerItemProxies, ("remoteGlobalIDString", target.productReference), ("proxyType", 2))
+        for target in sharedProject.targets:
+            containerItemProxyTargetId = self.getKeyOfFirstValueMatchingKeyValue(containerItemProxies, (REMOTE_ID_KEY, target.productReference), (PROXY_TYPE_KEY, 2))
             if containerItemProxyTargetId:
-                self.containerItemProxyTargetIds[target.productReference] = containerItemProxyTargetId
+                containerItemProxyIdForTargetReferenceDict[target.productReference] = containerItemProxyTargetId
                 continue
 
-            self.additionDict.setdefault("objects", {})[self.containerItemProxyTargetIds[target.productReference]] = {
-                "isa": "PBXContainerItemProxy",
-                "containerPortal": self.containerPortal,
-                "proxyType": 2,
-                "remoteGlobalIDString": target.productReference,
-                "remoteInfo": target.remoteInfo
+            containerItemProxyTargetId = uuid(24)
+            containerItemProxyIdForTargetReferenceDict[target.productReference] = containerItemProxyTargetId
+
+            self.additionDict.setdefault(OBJECTS_KEY, {})[containerItemProxyTargetId] = {
+                ISA_KEY: CONTAINER_ITEM_PROXY_ISA,
+                CONTAINER_PORTAL_KEY: containerPortal,
+                PROXY_TYPE_KEY: 2,
+                REMOTE_ID_KEY: target.productReference,
+                REMOTE_INFO_KEY: target.name
             }
 
+        return containerItemProxyIdForTargetReferenceDict
+
     def getAllObjectsWithIsa(self, isa):
-        return filter(lambda (k,v): v.get("isa", None) == isa, self.targetProject.plistObj["objects"].iteritems())
+        objectsForIsa = self.isaObjectCache.get(isa, None)
+        if objectsForIsa:
+            return objectsForIsa
+        else:
+            objectsForIsa = filter(lambda (k,v): v.get(ISA_KEY, None) == isa, self.targetProject.plistObj[OBJECTS_KEY].iteritems())
+            self.isaObjectCache[isa] = objectsForIsa
+            return objectsForIsa
 
     def containerPortalForProject(self, project):
-        fileReferences = self.getAllObjectsWithIsa("PBXFileReference")
+        fileReferences = self.getAllObjectsWithIsa(FILE_REFERENCE_ISA)
         projectName = project.projectName + ".xcodeproj"
-        return self.getKeyOfFirstValueMatchingKeyValue(fileReferences, ("name", projectName))
+        return self.getKeyOfFirstValueMatchingKeyValue(fileReferences, (NAME_KEY, projectName))
 
-    def addFileReference(self):
-        containerPortal = self.containerPortalForProject(self.sharedProject)
+    def addContainerPortal(self, sharedProject):
+        containerPortal = self.containerPortalForProject(sharedProject)
         if containerPortal:
-            self.containerPortal = containerPortal
-            return
+            return containerPortal
 
-        self.additionDict.setdefault("objects", {})[self.containerPortal] = {
-            "isa": "PBXFileReference",
-            "lastKnownFileType": "\"wrapper.pb-project\"",
-            "name": self.sharedProject.projectName + ".xcodeproj",
-            "path": "\"" + self.sharedProject.projectFilePath + "\"",
-            "sourceTree": "\"<group>\""
+        containerPortal = uuid(24)
+
+        self.additionDict.setdefault(OBJECTS_KEY, {})[containerPortal] = {
+            ISA_KEY: FILE_REFERENCE_ISA,
+            LAST_KNOWN_FILE_TYPE_KEY: "\"wrapper.pb-project\"",
+            NAME_KEY: sharedProject.projectName + ".xcodeproj",
+            PATH_KEY: '"%s"' % sharedProject.projectFilePath,
+            SOURCE_TREE_KEY: "\"<group>\""
         }
 
-    def addProductGroup(self):
-        currentChildren = self.targetProject.plistObj["objects"].get(self.productGroupId, {}).get("children", [])
-        childrenToAdd = [self.referenceProxyTargetIds[target.productReference] for target in self.sharedProject.targets]
+        return containerPortal
+
+    def addProductGroup(self, sharedProject, productGroupId, referenceProxyTargetIds):
+        currentChildren = self.targetProject.plistObj[OBJECTS_KEY].get(productGroupId, {}).get(CHILDREN_KEY, [])
+        childrenToAdd = [referenceProxyTargetIds[target.productReference] for target in sharedProject.targets]
         childrenToAdd = list(set(childrenToAdd) - set(currentChildren))
 
         if not childrenToAdd:
             return
 
-        if self.targetProject.plistObj["objects"].get(self.productGroupId, None):
-            self.additionDict.setdefault("objects", {})[self.productGroupId] = {
-                "children": childrenToAdd,
+        if self.targetProject.plistObj[OBJECTS_KEY].get(productGroupId, None):
+            self.additionDict.setdefault(OBJECTS_KEY, {})[productGroupId] = {
+                CHILDREN_KEY: childrenToAdd,
             }
         else:
-            self.additionDict.setdefault("objects", {})[self.productGroupId] = {
-                "isa": "PBXGroup",
-                "children": childrenToAdd,
-                "name": "Products",
-                "sourceTree": "\"<group>\""
+            self.additionDict.setdefault(OBJECTS_KEY, {})[productGroupId] = {
+                ISA_KEY: GROUP_ISA,
+                CHILDREN_KEY: childrenToAdd,
+                NAME_KEY: "Products",
+                SOURCE_TREE_KEY: "\"<group>\""
             }
 
 
-    def addReferenceProxies(self):
-        referenceProxyIds = self.getAllObjectsWithIsa("PBXReferenceProxy")
+    def addReferenceProxies(self, sharedProject, containerItemProxyTargetIds):
+        referenceProxyIds = self.getAllObjectsWithIsa(REFERENCE_PROXY_ISA)
+        referenceProxyTargetIdForProductReference = {}
 
-        for target in self.sharedProject.targets:
-            referenceProxyId = self.getKeyOfFirstValueMatchingKeyValue(referenceProxyIds, ("remoteRef", self.containerItemProxyTargetIds[target.productReference]))
+        for target in sharedProject.targets:
+            targetContainerItemProxyId = containerItemProxyTargetIds[target.productReference]
+            referenceProxyId = self.getKeyOfFirstValueMatchingKeyValue(referenceProxyIds, (REMOTE_REF_KEY, targetContainerItemProxyId ))
+
             if referenceProxyId:
-                self.referenceProxyTargetIds[target.productReference] = referenceProxyId
+                referenceProxyTargetIdForProductReference[target.productReference] = referenceProxyId
                 continue
 
-            self.additionDict.setdefault("objects", {})[self.referenceProxyTargetIds[target.productReference]] = {
-                "isa": "PBXReferenceProxy",
-                "fileType": self.fileTypeForContainerProxy(self.containerItemProxyTargetIds[target.productReference]),
-                "path": "%s" % self.sharedProject.plistObj["objects"][target.productReference]["path"],
-                "remoteRef": self.containerItemProxyTargetIds[target.productReference],
-                "sourceTree": "BUILT_PRODUCTS_DIR"
+            referenceProxyId = uuid(24)
+            referenceProxyTargetIdForProductReference[target.productReference] = referenceProxyId
+
+            self.additionDict.setdefault(OBJECTS_KEY, {})[referenceProxyId] = {
+                ISA_KEY: REFERENCE_PROXY_ISA,
+                FILE_TYPE_KEY: self.fileTypeForContainerProxy(sharedProject, targetContainerItemProxyId),
+                PATH_KEY: "%s" % sharedProject.plistObj[OBJECTS_KEY][target.productReference][PATH_KEY],
+                REMOTE_REF_KEY: targetContainerItemProxyId,
+                SOURCE_TREE_KEY: "BUILT_PRODUCTS_DIR"
             }
 
-    def fileTypeForContainerProxy(self, containerProxyId):
-        remoteId = self.additionDict["objects"][containerProxyId]["remoteGlobalIDString"]
-        return self.sharedProject.plistObj["objects"][remoteId]["explicitFileType"]
+        return referenceProxyTargetIdForProductReference
 
-    def idOfTargetToAddToFrameworkPhase(self):
-        for target in self.sharedProject.targets:
-            if self.sharedProject.plistObj["objects"][target.productReference]["path"].startswith("lib"):
-                return self.referenceProxyTargetIds[target.productReference]
+    def fileTypeForContainerProxy(self, sharedProject, containerProxyId):
+        remoteId = self.additionDict[OBJECTS_KEY][containerProxyId][REMOTE_ID_KEY]
+        return sharedProject.plistObj[OBJECTS_KEY][remoteId][EXPLICIT_FILETYPE_KEY]
 
-    def addLibBuildFile(self):
-        buildFiles = self.getAllObjectsWithIsa("PBXBuildFile")
-        libFileId = self.getKeyOfFirstValueMatchingKeyValue(buildFiles, ("fileRef", self.idOfTargetToAddToFrameworkPhase()))
-        if libFileId:
-            self.libFileId = libFileId
-            return
+    def addProjectReference(self, containerPortal):
+        projectId = self.targetProject.plistObj[ROOT_OBJECTS_KEY]
+        projectReferences = self.targetProject.plistObj[OBJECTS_KEY].get(projectId, {}).get(PROJECT_REFERENCES_KEY, [])
 
-        self.additionDict.setdefault("objects", {})[self.libFileId] = {
-            "isa": "PBXBuildFile",
-            "fileRef": self.idOfTargetToAddToFrameworkPhase()
-        }
+        projectReference = next((projectReference for projectReference in projectReferences if projectReference.get(PRODUCT_REFERENCE_KEY, None) == containerPortal), None)
+        if projectReference:
+            return projectReference[PRODUCT_GROUP_KEY]
 
-    def addProjectReference(self):
-        projectId = self.targetProject.plistObj["rootObject"]
-        projectReferences = self.targetProject.plistObj["objects"].get(projectId, {}).get("projectReferences", [])
-        for projectReference in projectReferences:
-            if projectReference.get("ProjectRef", None) == self.containerPortal:
-                self.productGroupId = projectReference["ProductGroup"]
-                return
+        productGroupId = uuid(24)
 
         projectReference = {
-            "ProductGroup": self.productGroupId,
-            "ProjectRef": self.containerPortal
+            PRODUCT_GROUP_KEY: productGroupId,
+            PRODUCT_REFERENCE_KEY: containerPortal
         }
 
-        self.additionDict.setdefault("objects", {}).setdefault(projectId, {}).setdefault("projectReferences", []).insert(0, projectReference)
+        self.additionDict.setdefault(OBJECTS_KEY, {}).setdefault(projectId, {}).setdefault(PROJECT_REFERENCES_KEY, []).insert(0, projectReference)
 
-    def replaceDependFrameworkWithSharedWorkspaceLib(self):
-        allFrameworkBuildPhases, _ = zip(*self.getAllObjectsWithIsa("PBXFrameworksBuildPhase"))
-        allTargets = self.getAllObjectsWithIsa("PBXNativeTarget")
+        return productGroupId
 
-        targetName = self.targetProject.projectName
-        targets = [target for id, target in allTargets if target["name"] == targetName]
+    def targetFrameworkPhaseForTarget(self, target):
+        frameworkBuildPhases, _ = zip(*self.getAllObjectsWithIsa(FRAMEWORK_BUILDPHASE_ISA))
 
-        targetFrameworkPhase = None
+        overlappingFrameworkPhases = list(set(frameworkBuildPhases) & set(target.buildPhases))
+        if not overlappingFrameworkPhases:
+            raise Exception()
 
-        for target in targets:
-            targetFrameworkPhase = set(allFrameworkBuildPhases) & set(target["buildPhases"])
-            if len(targetFrameworkPhase):
-                targetFrameworkPhase = list(targetFrameworkPhase)[0]
-            break
+        return overlappingFrameworkPhases.pop(0)  # There should only be one
 
-        frameworkPhaseFiles = self.targetProject.plistObj["objects"][targetFrameworkPhase]["files"]
+    def frameworkNameForTarget(self, target):
+        targetName = target.name
+        if target.endswith("Lib"):
+            return targetName[:-3] # Remove lib
 
-        for file in frameworkPhaseFiles:
-            fileref = self.targetProject.plistObj["objects"][file]["fileRef"]
-            if self.targetProject.plistObj["objects"][fileref].get("name", "").startswith(self.sharedProject.projectName):
-                fileToRemove = file
-                self.subtractionDict.setdefault("objects", {}).setdefault(targetFrameworkPhase, {}).setdefault("files", []).insert(0, fileToRemove)
-                self.subtractionDict["objects"][fileToRemove] = None
-                break
 
-        self.addLibBuildFile()
-        if self.libFileId not in self.targetProject.plistObj["objects"].get(targetFrameworkPhase, {}).get("files", []):
-            self.additionDict.setdefault("objects", {}).setdefault(targetFrameworkPhase, {}).setdefault("files", []).insert(0, self.libFileId)
+    def replaceDependFrameworkWithSharedWorkspaceLib(self, targetTarget, sharedTarget, referenceProxyTargetIdForProductReference):
+        targetFrameworkPhase = self.targetFrameworkPhaseForTarget(targetTarget)
+        targetFrameworkPhaseFiles = self.targetProject.plistObj[OBJECTS_KEY][targetFrameworkPhase][FILES_KEY]
 
-    def addToTargetDepend(self):
-        shareTarget = None
-        for target in self.sharedProject.targets:
-            if self.sharedProject.plistObj["objects"][target.productReference]["path"].startswith("lib"):
-                shareTarget = target
+        shouldAddLibBuildFile = True
+        referenceIdForTargetTarget = referenceProxyTargetIdForProductReference[sharedTarget.productReference]
 
-        if not shareTarget:
-            return
+        # Iterate through files until we find our framework one... then remove it.
+        for file in targetFrameworkPhaseFiles:
+            fileRefId = self.targetProject.plistObj[OBJECTS_KEY][file][FILE_REFERENCE_KEY]
+            fileName = self.targetProject.plistObj[OBJECTS_KEY].get(fileRefId, {}).get(NAME_KEY, "")
+            if fileName.startswith(sharedTarget.name):
+                self.subtractionDict.setdefault(OBJECTS_KEY, {}).setdefault(targetFrameworkPhase, {}).setdefault(FILES_KEY, []).insert(0, file)
+                self.subtractionDict[OBJECTS_KEY][file] = None
+            if fileRefId == referenceIdForTargetTarget:
+                shouldAddLibBuildFile = False
 
-        containerItemProxies = self.getAllObjectsWithIsa("PBXContainerItemProxy")
-        dependProxy = self.getKeyOfFirstValueMatchingKeyValue(containerItemProxies, ("containerPortal", self.containerPortal), ("remoteGlobalIDString", target.id), ("proxyType", 1))
+        if shouldAddLibBuildFile:
+
+            libFileId = uuid(24)
+
+            self.additionDict.setdefault(OBJECTS_KEY, {})[libFileId] = {
+                ISA_KEY: BUILD_FILE_ISA,
+                FILE_REFERENCE_KEY: referenceIdForTargetTarget
+            }
+
+            self.additionDict.setdefault(OBJECTS_KEY, {}).setdefault(targetFrameworkPhase, {}).setdefault(FILES_KEY, []).insert(0, libFileId)
+
+    def addToTargetDepend(self, targetTarget, shareTarget, containerPortal):
+
+        containerItemProxies = self.getAllObjectsWithIsa(CONTAINER_ITEM_PROXY_ISA)
+        dependProxy = self.getKeyOfFirstValueMatchingKeyValue(containerItemProxies, (CONTAINER_PORTAL_KEY, containerPortal), (REMOTE_ID_KEY, shareTarget.id), (PROXY_TYPE_KEY, 1))
         if not dependProxy:
             dependProxy = uuid()
-            self.additionDict.setdefault("objects", {})[dependProxy] = {
-                "isa": "PBXContainerItemProxy",
-                "containerPortal": self.containerPortal,
-                "proxyType": 1,
-                "remoteGlobalIDString": shareTarget.id,
-                "remoteInfo": shareTarget.remoteInfo
+            self.additionDict.setdefault(OBJECTS_KEY, {})[dependProxy] = {
+                ISA_KEY: CONTAINER_ITEM_PROXY_ISA,
+                CONTAINER_PORTAL_KEY: containerPortal,
+                PROXY_TYPE_KEY: 1,
+                REMOTE_ID_KEY: shareTarget.id,
+                REMOTE_INFO_KEY: shareTarget.name
             }
 
-        targetDependencies = self.getAllObjectsWithIsa("PBXTargetDependency")
-        targetDependency = self.getKeyOfFirstValueMatchingKeyValue(targetDependencies, ("targetProxy", dependProxy))
+        targetDependencies = self.getAllObjectsWithIsa(TARGET_DEPENDENCY_ISA)
+        targetDependency = self.getKeyOfFirstValueMatchingKeyValue(targetDependencies, (TARGET_PROXY_KEY, dependProxy))
         if not targetDependency:
             targetDependency = uuid(24)
-            self.additionDict.setdefault("objects", {})[targetDependency] = {
-                "isa": "PBXTargetDependency",
-                "name": shareTarget.remoteInfo,
-                "targetProxy": dependProxy
+            self.additionDict.setdefault(OBJECTS_KEY, {})[targetDependency] = {
+                ISA_KEY: TARGET_DEPENDENCY_ISA,
+                NAME_KEY: shareTarget.name,
+                TARGET_PROXY_KEY: dependProxy
             }
 
-        targetName = self.targetProject.projectName
-        targets = [target for target in self.targetProject.targets if target.remoteInfo == targetName]
-        if not targets:
-            return
-
-        target = targets[0]
-        if targetDependency not in self.targetProject.plistObj.get("objects", {}).get(target.id, {}).get("dependencies", []):
-            self.additionDict.setdefault("objects", {}).setdefault(target.id, {}).setdefault("dependencies", []).insert(0, targetDependency)
+        if targetDependency not in self.targetProject.plistObj.get(OBJECTS_KEY, {}).get(targetTarget.id, {}).get(DEPENDENCIES_KEY, []):
+            self.additionDict.setdefault(OBJECTS_KEY, {}).setdefault(targetTarget.id, {}).setdefault(DEPENDENCIES_KEY, []).insert(0, targetDependency)

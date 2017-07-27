@@ -59,7 +59,7 @@ class Target:
     @classmethod
     def targetFromKeyValues(cls, id, values):
         id = id
-        name = values[PRODUCT_NAME_KEY]
+        name = values[NAME_KEY]
         productReference = values[PRODUCT_REFERENCE_KEY]
         buildPhases = values[BUILD_PHASES_KEY]
         return Target(id, name, productReference, buildPhases)

@@ -1,7 +1,6 @@
 OBJECTS_KEY = "objects"
 ROOT_OBJECTS_KEY = "rootObject"
 ISA_KEY = "isa"
-PRODUCT_NAME_KEY = "productName"
 PRODUCT_REFERENCE_KEY  = "productReference"
 MAIN_GROUP_KEY = "mainGroup"
 NAME_KEY = "name"

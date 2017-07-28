@@ -192,7 +192,9 @@ class SharedWorkspace(object):
     def frameworkNameForTarget(self, target):
         targetName = target.name
         if targetName.endswith("Lib"):
-            return targetName[:-3] + ".framework"
+            targetName = targetName[:-3]
+
+        return targetName + ".framework"
 
     def replaceDependFrameworkWithSharedWorkspaceLib(self, targetTarget, sharedTarget, referenceProxyTargetIdForProductReference):
         targetFrameworkPhase = self.targetFrameworkPhaseForTarget(targetTarget)
@@ -206,7 +208,7 @@ class SharedWorkspace(object):
         for file in targetFrameworkPhaseFiles:
             fileRefId = self.targetProject.plistObj[OBJECTS_KEY][file][FILE_REFERENCE_KEY]
             fileName = self.targetProject.plistObj[OBJECTS_KEY].get(fileRefId, {}).get(NAME_KEY, "")
-            if fileName == frameworkNameToRemove:
+            if fileName.lower() == frameworkNameToRemove.lower():
                 self.subtractionDict.setdefault(OBJECTS_KEY, {}).setdefault(targetFrameworkPhase, {}).setdefault(FILES_KEY, []).insert(0, file)
                 self.subtractionDict[OBJECTS_KEY][file] = None
             elif fileRefId == referenceIdForTargetTarget:

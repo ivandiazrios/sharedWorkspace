@@ -1,7 +1,7 @@
 import glob
 import os
 from PlistParser import Parser
-from Utils import lazy_property
+from Utils import lazy_property, stripEnd
 from Constants import *
 
 class XcodeProject:
@@ -10,7 +10,7 @@ class XcodeProject:
 
     @lazy_property
     def projectName(self):
-        return os.path.basename(self.projectFilePath).rstrip(".xcodeproj")
+        return stripEnd(os.path.basename(self.projectFilePath), ".xcodeproj")
 
     @lazy_property
     def projectFilePath(self):

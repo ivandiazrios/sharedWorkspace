@@ -1,6 +1,5 @@
 import random
 import string
-import os
 
 def uuid(bits=24):
     return ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(bits))
@@ -16,6 +15,11 @@ def lazy_property(fn):
             setattr(self, attr_name, fn(self))
         return getattr(self, attr_name)
     return _lazy_property
+
+def stripEnd(text, suffix):
+    if not text.endswith(suffix):
+        return text
+    return text[:len(text)-len(suffix)]
 
 class Lookahead:
     def __init__(self, iter):

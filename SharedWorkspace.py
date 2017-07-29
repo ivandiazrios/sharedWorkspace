@@ -24,7 +24,7 @@ class SharedWorkspace(object):
             try:
                 self.shareProject(targetTarget, sharedProject)
             except Exception as e:
-                print "Could not share %s: %s" % sharedProject.projectName, e.message
+                print "Could not create shared workspace for directory '%s': %s" % (sharedProject.projectPath, e.message)
             else:
                 deepDictMerge(self.additionDict, self.finalAdditionDict)
                 deepDictMerge(self.subtractionDict, self.finalSubtractionDict)
@@ -63,7 +63,7 @@ class SharedWorkspace(object):
 
         target = next((target for target in self.targetProject.targets if target.name == targetName), None)
         if not target:
-            raise MissingTargetException("Missing target %s" % targetName)
+            raise MissingTargetException("%s is missing target %s" % (self.targetProject.projectName, targetName))
 
         return target
 

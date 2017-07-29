@@ -23,8 +23,8 @@ if __name__ == "__main__":
     additionDict, subtractDict = sharedWorkspace.share(targetToShareInto)
 
     if additionDict or subtractDict:
-        plistModifier = PlistModifier(targetProject.plistFilePath)
         try:
+            plistModifier = PlistModifier(targetProject.plistFilePath)
             output = plistModifier.process(additionDict, subtractDict)
         except:
             print "Error: Unable to modify existing project file"

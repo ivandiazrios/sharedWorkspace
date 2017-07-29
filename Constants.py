@@ -47,3 +47,6 @@ class ParsingException(Exception):
 
 class MissingBuildFrameworkException(Exception):
     pass
+
+class NotADirectoryException(Exception):
+    pass

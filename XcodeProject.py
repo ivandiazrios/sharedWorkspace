@@ -14,6 +14,9 @@ class XcodeProject:
 
     @lazy_property
     def projectFilePath(self):
+        if not os.path.isdir(self.projectPath):
+            raise NotADirectoryException("%s is not a directory" % self.projectPath)
+
         globPath = os.path.join(self.projectPath, "*.xcodeproj")
         files = glob.glob(globPath)
         if files:
@@ -25,13 +28,13 @@ class XcodeProject:
         if files:
             return files.pop(0)
 
-        raise MissingProjectFileException()
+        raise MissingProjectFileException("Could not find project file in path %s" % self.projectPath)
 
     @lazy_property
     def plistFilePath(self):
         projectPlistFilePath = os.path.join(self.projectFilePath, "project.pbxproj")
         if not os.path.isfile(projectPlistFilePath):
-            raise MissingProjectFileException()
+            raise MissingProjectFileException("Could not project.pbxproj file in path %s" % self.projectFilePath)
 
         return projectPlistFilePath
 

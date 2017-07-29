@@ -142,7 +142,7 @@ class Parser:
 
     def parse_assert(self, token, token_types):
         if token.token_type not in token_types:
-            raise ParsingException("Parser error: expected %s, got %s" % (','.join(token_types), token.token_type))
+            raise ParsingException("Parser error -- expected %s, got %s" % (','.join(token_types), token.token_type))
 
 class Tokenizer:
     def __init__(self, string_or_stream):
@@ -193,7 +193,7 @@ class Tokenizer:
         elif isIdentifierChar(next_char):
             return Token(TOKEN_IDENTIFIER, self.value_while(isIdentifierChar, initial_char=next_char))
         else:
-            raise TokenizerException("Tokenizer error: unknown char %s" % next_char)
+            raise TokenizerException("Tokenizer error -- unknown char %s" % next_char)
 
     def peek_is_comment(self):
         peek_char = self.peek_char()
@@ -208,7 +208,7 @@ class Tokenizer:
             _ = self.next_char()
             token = Token(TOKEN_COMMENT, self.value_until_str("*/"))
         else:
-            raise TokenizerException("Tokenizer error: extraneous /")
+            raise TokenizerException("Tokenizer error -- extraneous /")
 
         if self.ignoring_comments:
             return self.next_token()
@@ -222,7 +222,7 @@ class Tokenizer:
             peek_char = self.peek_char()
 
             if not peek_char:
-                raise TokenizerException("Tokenizer error: file ended unexpectedly")
+                raise TokenizerException("Tokenizer error -- file ended unexpectedly")
 
             if not character_validation_func(peek_char):
                 return value
@@ -239,7 +239,7 @@ class Tokenizer:
         while True:
             next_char = self.next_char()
             if not character_validation_func(next_char):
-                raise TokenizerException("Tokenizer error: invalid character %s", next_char)
+                raise TokenizerException("Tokenizer error -- invalid character %s", next_char)
 
             value += next_char
             if value.endswith(str) and not (ignore_if_escaped and value.endswith('\\' + str)):

@@ -1,5 +1,4 @@
-from Utils import uuid
-from collections import defaultdict
+from Utils import uuid, deepDictMerge
 from Constants import *
 
 class SharedWorkspace(object):
@@ -9,33 +8,53 @@ class SharedWorkspace(object):
 
     def share(self, targetTargetName=None):
 
-        self.additionDict, self.subtractionDict = {}, {}
-        targetTarget = self.targetTargetFor(targetTargetName)
+        self.finalAdditionDict, self.finalSubtractionDict = {}, {}
+
+        try:
+            targetTarget = self.targetTargetFor(targetTargetName)
+        except Exception as e:
+            print "Error: %s" % e.message
+            return None, None
 
         for sharedProject in self.sharedProjects:
 
             self.isaObjectCache = {}
+            self.additionDict, self.subtractionDict = {}, {}
 
-            targetToShare = self.targetToShareFromProject(sharedProject)
-            if not targetToShare:
-                continue
+            try:
+                self.shareProject(targetTarget, sharedProject)
+            except Exception as e:
+                print "Could not share %s: %s" % sharedProject.projectName, e.message
+            else:
+                deepDictMerge(self.additionDict, self.finalAdditionDict)
+                deepDictMerge(self.subtractionDict, self.finalSubtractionDict)
 
-            containerPortal = self.addContainerPortal(sharedProject)
+        return self.finalAdditionDict, self.finalSubtractionDict
 
-            self.addChildToMainGroup(containerPortal)
+    def shareProject(self, target, sharedProject):
+        sharedTarget= self.targetToShareFromProject(sharedProject)
 
-            containerItemProxyIdForTargetReferenceDict = self.addContainerItemProxies(sharedProject, containerPortal)
-            referenceProxyTargetIdForProductReference = self.addReferenceProxies(sharedProject, containerItemProxyIdForTargetReferenceDict)
-            productGroupId = self.addProjectReference(containerPortal)
+        containerPortal = self.addContainerPortal(sharedProject)
 
-            self.addProductGroup(sharedProject, productGroupId, referenceProxyTargetIdForProductReference)
-            self.replaceDependFrameworkWithSharedWorkspaceLib(targetTarget, targetToShare, referenceProxyTargetIdForProductReference)
-            self.addToTargetDepend(targetTarget, targetToShare, containerPortal)
+        self.addChildToMainGroup(containerPortal)
 
-        return self.additionDict, self.subtractionDict
+        containerItemProxyIdForTargetReferenceDict = self.addContainerItemProxies(sharedProject, containerPortal)
+        referenceProxyTargetIdForProductReference = self.addReferenceProxies(sharedProject,
+                                                                             containerItemProxyIdForTargetReferenceDict)
+        productGroupId = self.addProjectReference(containerPortal)
+
+        self.addProductGroup(sharedProject, productGroupId, referenceProxyTargetIdForProductReference)
+        self.replaceDependFrameworkWithSharedWorkspaceLib(target, sharedTarget,
+                                                          referenceProxyTargetIdForProductReference)
+        self.addToTargetDepend(target, sharedTarget, containerPortal)
 
     def targetToShareFromProject(self, project):
-        return next((target for target in project.targets if project.plistObj["objects"][target.productReference]["path"].startswith("lib")), None)
+        targetToShare = next((target for target in project.targets if
+                              project.plistObj["objects"][target.productReference]["path"].startswith("lib")), None)
+        if not targetToShare:
+            raise MissingTargetException("Missing target to share")
+
+        return targetToShare
 
     def targetTargetFor(self, targetName):
         if not targetName:
@@ -44,7 +63,8 @@ class SharedWorkspace(object):
 
         target = next((target for target in self.targetProject.targets if target.name == targetName), None)
         if not target:
-            raise MissingTargetException("Cannot find target to merge into")
+            raise MissingTargetException("Missing target %s" % targetName)
+
         return target
 
     def getKeyOfFirstValueMatchingKeyValue(self, l, *keyValues):
@@ -185,7 +205,7 @@ class SharedWorkspace(object):
 
         overlappingFrameworkPhases = list(set(frameworkBuildPhases) & set(target.buildPhases))
         if not overlappingFrameworkPhases:
-            raise Exception()
+            raise MissingBuildFrameworkException("Target %s is missing a framework link phase" % target.name)
 
         return overlappingFrameworkPhases.pop(0)  # There should only be one
 

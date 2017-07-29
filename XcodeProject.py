@@ -25,12 +25,14 @@ class XcodeProject:
         if files:
             return files.pop(0)
 
-        raise Exception()
+        raise MissingProjectFileException()
 
     @lazy_property
     def plistFilePath(self):
         projectPlistFilePath = os.path.join(self.projectFilePath, "project.pbxproj")
-        assert os.path.isfile(projectPlistFilePath)
+        if not os.path.isfile(projectPlistFilePath):
+            raise MissingProjectFileException()
+
         return projectPlistFilePath
 
     @lazy_property

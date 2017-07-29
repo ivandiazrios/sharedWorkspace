@@ -1,9 +1,8 @@
 #!/usr/bin/env python
-
-from XcodeProject import XcodeProject
-from SharedWorkspace import SharedWorkspace
-from PlistModifier import PlistModifier
 import argparse
+from PlistModifier import PlistModifier
+from SharedWorkspace import SharedWorkspace
+from XcodeProject import XcodeProject
 
 if __name__ == "__main__":
     # Command line arguments #####################
@@ -23,6 +22,12 @@ if __name__ == "__main__":
     sharedWorkspace = SharedWorkspace(targetProject, *sharedProjectPaths)
     additionDict, subtractDict = sharedWorkspace.share(targetToShareInto)
 
-    output = PlistModifier(targetProject.plistFilePath).process(additionDict, subtractDict)
-    with open(targetProject.plistFilePath, 'w') as file:
-        file.write(output)
+    if additionDict or subtractDict:
+        plistModifier = PlistModifier(targetProject.plistFilePath)
+        try:
+            output = plistModifier.process(additionDict, subtractDict)
+        except:
+            print "Error: Unable to modify existing project file"
+        else:
+            with open(targetProject.plistFilePath, 'w') as file:
+                file.write(output)

@@ -47,3 +47,21 @@ class Lookahead:
 def itemsWithValueContainingKeyValues(dict, *keyValues):
     allKeyValuesInDict = lambda _, dict: all(dict.get(k, None) == v for k, v in keyValues)
     return filter(allKeyValuesInDict, dict)
+
+def deepDictMerge(source, destination):
+    for key, value in source.iteritems():
+        if key in destination:
+            destinationValue = destination[key]
+            if type(destinationValue) == type(value):
+                if type(value) == list:
+                    destination[key] = value + destinationValue
+                elif type(value) == dict:
+                    destination[key] = merge(value, destinationValue)
+                else:
+                    destination[key] = value
+            else:
+                destination[key] = value
+        else:
+            destination[key] = value
+
+    return destination

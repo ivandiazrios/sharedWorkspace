@@ -35,3 +35,15 @@ TARGET_DEPENDENCY_ISA = "PBXTargetDependency"
 
 class MissingTargetException(Exception):
     pass
+
+class MissingProjectFileException(Exception):
+    pass
+
+class TokenizerException(Exception):
+    pass
+
+class ParsingException(Exception):
+    pass
+
+class MissingBuildFrameworkException(Exception):
+    pass

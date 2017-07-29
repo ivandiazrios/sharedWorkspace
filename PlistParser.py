@@ -173,7 +173,7 @@ class Tokenizer:
         elif next_char == "/" and self.peek_is_comment():
             return self.process_comment()
         elif next_char == "\"":
-            return Token(TOKEN_STRING, self.value_until_str('\"', initial_char=next_char, inclusive=True, ignore_if_escaped=True))
+            return Token(TOKEN_STRING, self.value_until_str('\"', ignore_if_escaped=True))
         elif next_char == "<":
             return Token(TOKEN_DATA, self.value_until_str(">", character_validation_func=isHex, initial_char=next_char))
         elif next_char == '{':

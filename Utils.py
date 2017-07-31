@@ -56,7 +56,7 @@ def deepDictMerge(source, destination):
                 if type(value) == list:
                     destination[key] = value + destinationValue
                 elif type(value) == dict:
-                    destination[key] = merge(value, destinationValue)
+                    destination[key] = deepDictMerge(value, destinationValue)
                 else:
                     destination[key] = value
             else:

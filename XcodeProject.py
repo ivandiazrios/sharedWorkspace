@@ -12,6 +12,18 @@ class XcodeProject:
     def projectName(self):
         return stripEnd(os.path.basename(self.projectFilePath), ".xcodeproj")
 
+    def findSubDirectoryForProjectFile(self):
+        directoryToMatchAgaint = os.path.basename(os.path.normpath(self.projectPath))
+
+        files = os.listdir(self.projectPath)
+        for file in files:
+            fullFilePath = os.path.join(self.projectPath, file)
+            if os.path.isdir(fullFilePath) and file.lower() == directoryToMatchAgaint.lower():
+                return file
+
+        return None
+
+
     @lazy_property
     def projectFilePath(self):
         if not os.path.isdir(self.projectPath):
@@ -22,11 +34,14 @@ class XcodeProject:
         if files:
             return files.pop(0)
 
-        # If haven't found it look one level deep
-        globPath = os.path.join(self.projectPath, "*/*.xcodeproj")
-        files = glob.glob(globPath)
-        if files:
-            return files.pop(0)
+        # If haven't found it look in a folder with the same name as projectPath directory name -- case insensitive
+        subDirectory = self.findSubDirectoryForProjectFile()
+
+        if subDirectory:
+            globPath = os.path.join(self.projectPath, "%s/*.xcodeproj" % subDirectory)
+            files = glob.glob(globPath)
+            if files:
+                return files.pop(0)
 
         raise MissingProjectFileException("Could not find project file in path %s" % self.projectPath)
 
